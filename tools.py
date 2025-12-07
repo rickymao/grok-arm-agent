@@ -61,7 +61,9 @@ def get_all_joint_radians():
         - 2: elbow joint
         - 3: gripper joint
     """
-    return {"base_joint": roarm_client.joints_radian_get()[0], "shoulder_joint": roarm_client.joints_radian_get()[1], "elbow_joint": roarm_client.joints_radian_get()[2], "gripper_joint": roarm_client.joints_radian_get()[3]}
+    radians = roarm_client.joints_radian_get()
+    radians = [round(x, 2) for x in radians]
+    return {"base_joint": radians[0], "shoulder_joint": radians[1], "elbow_joint": radians[2], "gripper_joint": radians[3]}
 
 @tool
 def move_robot_position(
