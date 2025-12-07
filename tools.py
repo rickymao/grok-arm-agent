@@ -1,4 +1,5 @@
 from langchain_core.tools import tool
+from cam import get_detections_map
 from roarm import RoarmClient, custom_post_ctrl
 import time
 
@@ -32,6 +33,21 @@ def move_to_home_position():
     home_radians = [0.0, 0.0, 1.5708, 0.0]
     roarm_client.joints_radian_ctrl(radians=home_radians, speed=500, acc=0)
     return "Moved to home position."
+
+@tool
+def pick_up_object(object_name: str):
+    """Pick up an object by name
+    Args:
+        object_name: The name of the object to pick up
+    Returns:
+        A string indicating that the object has been picked up
+    """
+    detections_map = get_detections_map()
+    if object_name not in detections_map:
+        return f"Object {object_name} not found in detections map."
+    object_center = detections_map[object_name]
+    object_center = [round(x, 2) for x in object_center]
+    return f"Picked up {object_name} at center {object_center}."
 
 @tool
 def set_led_brightness(brightness: int):

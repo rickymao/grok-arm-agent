@@ -9,7 +9,7 @@ from ultralytics import YOLO
 # ===================== CONFIG =====================
 
 # Small, fast model. You can switch to "yolo11n.pt" if you've got that.
-MODEL_PATH = "yolov8n.pt"
+MODEL_PATH = "yolo11n.pt"
 
 # Detection tuning
 CONFIDENCE_THRESHOLD = 0.35
@@ -206,7 +206,7 @@ def draw_overlay(frame, detections: List[Detection], target: Optional[Detection]
 
 # ===================== MAIN LOOP =====================
 
-def main():
+def get_detections_map():
     model = load_model()
 
     cap = cv2.VideoCapture(CAMERA_INDEX)
@@ -245,6 +245,7 @@ def main():
             # === This is where you'd pass info to the robot ===
             if last_target is not None:
                 # Example robot-friendly print:
+                return { det.label: (det.cx, det.cy) for det in last_detections}
                 print(
                     {
                         "strategy": TARGET_STRATEGY,
@@ -263,22 +264,22 @@ def main():
                     }
                 )
 
-        # Draw last known detections and target
+        # # Draw last known detections and target
         frame = draw_overlay(frame, last_detections, last_target)
 
-        # Show FPS
-        now = time.time()
-        fps = 1.0 / (now - last_time) if now > last_time else 0.0
-        last_time = now
-        cv2.putText(
-            frame,
-            f"FPS: {fps:.1f}",
-            (w - 150, 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (0, 255, 0),
-            2,
-        )
+        # # Show FPS
+        # now = time.time()
+        # fps = 1.0 / (now - last_time) if now > last_time else 0.0
+        # last_time = now
+        # cv2.putText(
+        #     frame,
+        #     f"FPS: {fps:.1f}",
+        #     (w - 150, 30),
+        #     cv2.FONT_HERSHEY_SIMPLEX,
+        #     0.7,
+        #     (0, 255, 0),
+        #     2,
+        # )
 
         cv2.imshow("YOLO Fast Tabletop Detection", frame)
         if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -286,7 +287,3 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    main()

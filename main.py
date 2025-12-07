@@ -7,7 +7,7 @@ import operator
 from langgraph.graph import StateGraph, START, END
 from langchain.messages import HumanMessage, ToolMessage
 from langchain.messages import SystemMessage
-from tools import move_to_home_position, move_robot_position, set_gripper, wait, set_led_brightness
+from tools import move_to_home_position, move_robot_position, pick_up_object, set_gripper, set_led_brightness
 from roarm import RoarmClient
 load_dotenv()
 
@@ -20,7 +20,7 @@ class GrokJRAgent(TypedDict):
 model = ChatXAI(model="grok-4-1-fast-non-reasoning")
 roarm_client = RoarmClient()
     # Augment the LLM with tools
-tools = [move_to_home_position, move_robot_position, set_gripper, set_led_brightness]
+tools = [move_to_home_position, move_robot_position, set_gripper, set_led_brightness, pick_up_object]
 tools_by_name = {tool.name: tool for tool in tools}
 model = model.bind_tools(tools)
 
