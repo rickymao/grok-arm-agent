@@ -9,7 +9,7 @@ from langchain.messages import AIMessage, HumanMessage, ToolMessage
 from langchain.messages import SystemMessage
 from tools import move_to_home_position, move_robot_position, pick_up_object, set_gripper, set_led_brightness
 from roarm import RoarmClient
-from voice import text_to_speech
+from voice import text_to_speech, press_to_talk
 load_dotenv()
 
 # State definition
@@ -53,7 +53,8 @@ def get_robot_state_node(_: GrokJRAgent):
 # user input node
 def user_input_node(_: GrokJRAgent):
     """User input node"""
-    return {"messages": [HumanMessage(content=input("Enter your command: "))]}
+    cmd = press_to_talk()
+    return {"messages": [HumanMessage(content=cmd)]}
 
 # execute the tool calls
 def tool_node(state: GrokJRAgent):
