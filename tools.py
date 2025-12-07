@@ -1,4 +1,5 @@
 from langchain_core.tools import tool
+from roarm import RoarmClient, custom_post_ctrl
 import time
 
 roarm_client = RoarmClient()
@@ -92,7 +93,7 @@ def move_robot_position(
         current_pose[3],
     ]
     pose = [round(x, 3) for x in pose]
-    custom_pose_ctrl(pose)
+    custom_post_ctrl(pose)
     if not check_pose(pose):
         return f"Failed to move to position {pose}, please try again"
     return f"Moved to position {pose}."
