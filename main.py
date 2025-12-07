@@ -129,7 +129,7 @@ You are a precise assistant that controls a Roarm M2 robot arm.
     graph.add_edge("user_input", "llm_call")
     graph.add_edge("llm_call", "print_state")
     graph.add_edge("print_state", "tool_node")
-    graph.add_edge("tool_node", END)
+    graph.add_edge("tool_node", "user_input")
     graph = graph.compile()
     graph = graph.with_config(config={
         "recursion_limit": 1000
