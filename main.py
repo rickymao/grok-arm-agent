@@ -128,7 +128,6 @@ You are a precise assistant that controls a Roarm M2 robot arm.
     graph.add_edge(START, "user_input")
     graph.add_edge("user_input", "get_robot_state_node")
     graph.add_edge("get_robot_state_node", "llm_call")
-    graph.add_edge("user_input", "llm_call")
     graph.add_edge("llm_call", "print_state")
     graph.add_edge("print_state", "tool_node")
     graph.add_edge("tool_node", "user_input")
