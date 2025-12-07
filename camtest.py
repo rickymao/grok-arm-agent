@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import List
 
 import cv2
-import numpy as np
 from ultralytics import YOLO
 
 # ===================== CONFIG =====================
@@ -12,7 +11,7 @@ MODEL_PATH = "yolo11n.pt"
 
 CONFIDENCE_THRESHOLD = 0.30
 IOU_THRESHOLD = 0.45
-INFER_EVERY_N_FRAMES = 1      # run YOLO every frame for testing
+INFER_EVERY_N_FRAMES = 2      # run YOLO every frame for testing
 TARGET_CLASSES = None
 CAMERA_INDEX = 0
 
@@ -26,7 +25,7 @@ CROP_LEFT = 250
 CROP_RIGHT = 600
 
 
-# ---------- CROPPING (same as calibration) ----------
+# ---------- CROPPING (copied from calibration) ----------
 
 def apply_rotation_and_crop(frame):
     """
@@ -57,31 +56,6 @@ def apply_rotation_and_crop(frame):
         return frame_cropped
     else:
         return frame
-
-
-# ---------- HOMOGRAPHY (pixels -> robot XY) ----------
-
-try:
-    H = np.load("homography.npy")
-    print("[INFO] Loaded homography.npy")
-except FileNotFoundError:
-    H = None
-    print("[WARN] homography.npy not found. pixel_to_robot() will raise if used.")
-
-
-def pixel_to_robot(u: float, v: float) -> tuple[float, float]:
-    """
-    Map (u, v) in ROTATED+CROPPED image coords -> (X, Y) in robot coords.
-
-    This must be the same coordinate system you used during calibration.
-    """
-    if H is None:
-        raise RuntimeError("Homography H is not loaded (homography.npy missing).")
-
-    pt = np.array([u, v, 1.0], dtype=np.float32)
-    out = H @ pt
-    out /= out[2]
-    return float(out[0]), float(out[1])
 
 
 # ===================== DATA STRUCTURES =====================
@@ -129,7 +103,7 @@ def detect_objects(frame, model: YOLO) -> List[Detection]:
         cy = (y1 + y2) // 2
 
         area = (x2 - x1) * (y2 - y1)
-        # Optional: filter tiny detections
+        # optional area filter
         if area < 0.002 * w * h:
             continue
 
@@ -145,7 +119,6 @@ def detect_objects(frame, model: YOLO) -> List[Detection]:
 def get_detections_map() -> dict:
     """
     Returns: {label: (cx, cy)} with coordinates IN THE CROPPED IMAGE.
-    These (cx, cy) are what you feed into pixel_to_robot().
     """
     model = load_model()
 
@@ -162,11 +135,11 @@ def get_detections_map() -> dict:
         cap.release()
         return {}
 
-    # Apply EXACT same crop as calibration
+    # ⭐ Apply EXACT same crop as calibration
     frame = apply_rotation_and_crop(frame)
     print("[DEBUG] Cropped frame shape:", frame.shape)
 
-    # Optional: save what YOLO sees
+    # Save what YOLO sees, for sanity
     cv2.imwrite("debug_cropped_cam.jpg", frame)
     print("[DEBUG] Wrote debug_cropped_cam.jpg")
 
@@ -183,7 +156,3 @@ def get_detections_map() -> dict:
 if __name__ == "__main__":
     dets = get_detections_map()
     print("Detections map:", dets)
-    if dets and H is not None:
-        for label, (u, v) in dets.items():
-            X, Y = pixel_to_robot(u, v)
-            print(f"{label}: pixel=({u:.1f}, {v:.1f}) -> robot=({X:.1f}, {Y:.1f})")

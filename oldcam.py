@@ -1,9 +1,9 @@
+import time
 import math
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 import cv2
-import numpy as np
 from ultralytics import YOLO
 
 # ===================== CONFIG =====================
@@ -16,75 +16,41 @@ INFER_EVERY_N_FRAMES = 1      # run YOLO every frame for testing
 TARGET_CLASSES = None
 CAMERA_INDEX = 0
 
-# === MUST MATCH CALIBRATION SCRIPT EXACTLY ===
-ROTATE_90_CLOCKWISE = False
+# === CROP / ROTATION SETTINGS ===
+ROTATE_90_CLOCKWISE = False   # set True only if your calibration was rotated
 
-CROP_ENABLED = True
+# YOUR crop settings:
 CROP_TOP = 0
 CROP_BOTTOM = 0
 CROP_LEFT = 250
-CROP_RIGHT = 600
+CROP_RIGHT = 500
 
 
-# ---------- CROPPING (same as calibration) ----------
+# ===================== CROPPING =====================
 
 def apply_rotation_and_crop(frame):
-    """
-    Apply the same rotation and crop that you use in calibration.
-
-    Returns:
-        cropped_frame
-    """
-    # 1) Rotate
+    """Applies rotation + crop exactly as used in calibration."""
     if ROTATE_90_CLOCKWISE:
         frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
 
     h, w = frame.shape[:2]
 
-    if CROP_ENABLED:
-        x1 = max(0, CROP_LEFT)
-        x2 = max(0, w - CROP_RIGHT)
-        y1 = max(0, CROP_TOP)
-        y2 = max(0, h - CROP_BOTTOM)
+    x1 = max(0, CROP_LEFT)
+    x2 = max(1, w - CROP_RIGHT)
+    y1 = max(0, CROP_TOP)
+    y2 = max(1, h - CROP_BOTTOM)
 
-        # Make sure bounds are valid
-        x1 = min(x1, w - 1)
-        x2 = max(x1 + 1, x2)
-        y1 = min(y1, h - 1)
-        y2 = max(y1 + 1, y2)
+    # ensure valid crop
+    x1 = min(x1, w - 1)
+    x2 = max(x1 + 1, x2)
+    y1 = min(y1, h - 1)
+    y2 = max(y1 + 1, y2)
 
-        frame_cropped = frame[y1:y2, x1:x2]
-        return frame_cropped
-    else:
-        return frame
+    cropped = frame[y1:y2, x1:x2]
+    return cropped
 
 
-# ---------- HOMOGRAPHY (pixels -> robot XY) ----------
-
-try:
-    H = np.load("homography.npy")
-    print("[INFO] Loaded homography.npy")
-except FileNotFoundError:
-    H = None
-    print("[WARN] homography.npy not found. pixel_to_robot() will raise if used.")
-
-
-def pixel_to_robot(u: float, v: float) -> tuple[float, float]:
-    """
-    Map (u, v) in ROTATED+CROPPED image coords -> (X, Y) in robot coords.
-
-    This must be the same coordinate system you used during calibration.
-    """
-    if H is None:
-        raise RuntimeError("Homography H is not loaded (homography.npy missing).")
-
-    pt = np.array([u, v, 1.0], dtype=np.float32)
-    out = H @ pt
-    out /= out[2]
-    return float(out[0]), float(out[1])
-
-
-# ===================== DATA STRUCTURES =====================
+# ===================== DETECTION STRUCT =====================
 
 @dataclass
 class Detection:
@@ -117,7 +83,7 @@ def detect_objects(frame, model: YOLO) -> List[Detection]:
         verbose=False,
     )[0]
 
-    detections: List[Detection] = []
+    detections = []
     h, w = frame.shape[:2]
 
     for box, cls_id, conf in zip(results.boxes.xyxy,
@@ -129,6 +95,7 @@ def detect_objects(frame, model: YOLO) -> List[Detection]:
         cy = (y1 + y2) // 2
 
         area = (x2 - x1) * (y2 - y1)
+
         # Optional: filter tiny detections
         if area < 0.002 * w * h:
             continue
@@ -145,7 +112,6 @@ def detect_objects(frame, model: YOLO) -> List[Detection]:
 def get_detections_map() -> dict:
     """
     Returns: {label: (cx, cy)} with coordinates IN THE CROPPED IMAGE.
-    These (cx, cy) are what you feed into pixel_to_robot().
     """
     model = load_model()
 
@@ -153,6 +119,9 @@ def get_detections_map() -> dict:
     if not cap.isOpened():
         print("[ERROR] Could not open camera.")
         return {}
+
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
     print("[INFO] Running YOLO detection...")
 
@@ -162,19 +131,21 @@ def get_detections_map() -> dict:
         cap.release()
         return {}
 
-    # Apply EXACT same crop as calibration
+    # ⭐ APPLY CROP
     frame = apply_rotation_and_crop(frame)
     print("[DEBUG] Cropped frame shape:", frame.shape)
 
-    # Optional: save what YOLO sees
-    cv2.imwrite("debug_cropped_cam.jpg", frame)
-    print("[DEBUG] Wrote debug_cropped_cam.jpg")
+    # Save debug frame
+    cv2.imwrite("debug_cropped.jpg", frame)
+    print("[DEBUG] Wrote debug_cropped.jpg")
 
+    # Run YOLO
     detections = detect_objects(frame, model)
     print(f"[INFO] Detected labels: {[d.label for d in detections]}")
 
     cap.release()
 
+    # Return simplified mapping
     return {d.label: (d.cx, d.cy) for d in detections}
 
 
@@ -183,7 +154,3 @@ def get_detections_map() -> dict:
 if __name__ == "__main__":
     dets = get_detections_map()
     print("Detections map:", dets)
-    if dets and H is not None:
-        for label, (u, v) in dets.items():
-            X, Y = pixel_to_robot(u, v)
-            print(f"{label}: pixel=({u:.1f}, {v:.1f}) -> robot=({X:.1f}, {Y:.1f})")

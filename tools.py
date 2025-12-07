@@ -1,5 +1,5 @@
 from langchain_core.tools import tool
-from cam import get_detections_map
+from cam import get_detections_map, pixel_to_robot
 from roarm import RoarmClient, custom_post_ctrl
 import time
 
@@ -34,17 +34,42 @@ def move_to_home_position():
     roarm_client.joints_radian_ctrl(radians=home_radians, speed=500, acc=0)
     return "Moved to home position."
 
+
 @tool
 def pick_up_object(object_name: str):
-    """Pick up an object by name
+    """Detect and locate an object by name using the camera feed and homography.
     Args:
         object_name: The name of the object to pick up
     Returns:
         A string indicating that the object has been picked up
     """
     detections_map = get_detections_map()
+    if not detections_map:
+        return "No objects detected."
     if object_name not in detections_map:
         return f"Object {object_name} not found in detections map."
+    
+    # Pixel center in rotated+cropped frame
+    cx, cy = detections_map[object_name]
+
+    # Convert to robot XY via homography
+    X, Y = pixel_to_robot(cx, cy)
+
+    # Round for prettier logging
+    pixel_center = [round(cx, 2), round(cy, 2)]
+    robot_xy = [round(X, 2), round(Y, 2)]
+
+    Z_TABLE = -120       # table height in your frame
+    Z_APPROACH = Z_TABLE + 25
+    T_ORIENT = 1           # whatever angle you like
+    
+    # approach
+    custom_post_ctrl([X, Y, Z_APPROACH, T_ORIENT])
+    # z approach
+    custom_post_ctrl([X, Y, Z_TABLE, T_ORIENT])
+    # Close gripper 
+    roarm_client.gripper_radian_ctrl(0.2, speed=500, acc=0) # set lower to account for object
+    
     object_center = detections_map[object_name]
     object_center = [round(x, 2) for x in object_center]
     return f"Picked up {object_name} at center {object_center}."
@@ -112,8 +137,6 @@ def move_robot_position(
     ]
     pose = [round(x, 3) for x in pose]
     custom_post_ctrl(pose)
-    if not check_pose(pose):
-        return f"Failed to move to position {pose}, please try again"
     return f"Moved to position {pose}."
 
 @tool
