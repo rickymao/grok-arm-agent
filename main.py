@@ -8,6 +8,7 @@ from langgraph.graph import StateGraph, START, END
 from langchain.messages import HumanMessage, ToolMessage
 from langchain.messages import SystemMessage
 from tools import move_to_home_position, move_robot_position, set_gripper, wait
+from roarm import RoarmClient
 load_dotenv()
 
 # State definition
@@ -17,10 +18,36 @@ class GrokJRAgent(TypedDict):
 
 
 model = ChatXAI(model="grok-4-1-fast-non-reasoning")
+roarm_client = RoarmClient()
     # Augment the LLM with tools
 tools = [move_to_home_position, move_robot_position, set_gripper, wait]
 tools_by_name = {tool.name: tool for tool in tools}
 model = model.bind_tools(tools)
+
+# get the current robot state
+def get_robot_state_node(_: GrokJRAgent):
+    """Get the current robot state and joint radians"""
+    pose = roarm_client.pose_get()
+    pose = [round(x, 2) for x in pose]
+
+    joint_radians = roarm_client.joints_radian_get()
+    joint_radians = [round(x, 2) for x in joint_radians]
+
+    robot_state = {
+        "x": pose[0],
+        "y": pose[1],
+        "z": pose[2],
+        "gripper": pose[3],
+        "base_joint": joint_radians[0],
+        "shoulder_joint": joint_radians[1],
+        "elbow_joint": joint_radians[2],
+        "gripper_joint": joint_radians[3]
+    }
+
+    return {
+        "messages": [SystemMessage(content=f"The current robot state is: {str(robot_state)}")],
+        "robot_state": robot_state
+    }
 
 # user input node
 def user_input_node(_: GrokJRAgent):
@@ -90,10 +117,13 @@ You are a precise, safety-conscious assistant that controls a Roarm M2 robot arm
     """
     graph = StateGraph(GrokJRAgent)
     graph.add_node("user_input", user_input_node)
+    graph.add_node("get_robot_state_node", get_robot_state_node)
     graph.add_node("llm_call", llm_call)
     graph.add_node("tool_node", tool_node)
     graph.add_node("print_state", print_state)
     graph.add_edge(START, "user_input")
+    graph.add_edge("user_input", "get_robot_state_node")
+    graph.add_edge("get_robot_state_node", "llm_call")
     graph.add_edge("user_input", "llm_call")
     graph.add_edge("llm_call", "print_state")
     graph.add_edge("print_state", "tool_node")
