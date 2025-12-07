@@ -1,7 +1,7 @@
 import serial
 import time
 
-PORT = '/dev/ttyUSB0'  # Change this to your port (e.g., 'COM3' for Windows)
+PORT = '/dev/cu.usbserial-10'  # Change this to your port (e.g., 'COM3' for Windows)
 BAUDRATE = 115200
 
 def read_serial(ser, duration=2):
@@ -22,7 +22,6 @@ def call_serial(command: str):
     try:
         # Send the command once
         ser.write(command.encode() + b'\n')
-        print(f"Sent: {command}")
         
         # Wait for and read response
         read_serial(ser, duration=2)  # Wait up to 2 seconds for response
@@ -31,4 +30,3 @@ def call_serial(command: str):
         print("\nInterrupted by user")
     finally:
         ser.close()
-        print("Serial port closed")

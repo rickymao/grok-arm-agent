@@ -1,7 +1,7 @@
 from roarm_sdk.roarm import roarm
 from utils import call_serial
 
-port = "/dev/ttyUSB0"
+port = "/dev/cu.usbserial-10"
 class RoarmClient:
     _instance = None
     def __new__(cls):

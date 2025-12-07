@@ -34,8 +34,8 @@ def move_to_home_position():
     return "Moved to home position."
 
 @tool
-def turn_on_led(brightness: int):
-    """"Set the brightness of the LED light between 0 and 255
+def set_led_brightness(brightness: int):
+    """"Set the brightness of the LED light between 0 and 255 inclusive, with 0 being off and 255 being full brightness.
     Args:
         brightness (int): Brightness level for the LED light (0-255)
     Returns:
