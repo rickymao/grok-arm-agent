@@ -9,6 +9,7 @@ from langchain.messages import AIMessage, HumanMessage, ToolMessage
 from langchain.messages import SystemMessage
 from tools import move_to_home_position, move_robot_position, pick_up_object, set_gripper, set_led_brightness
 from roarm import RoarmClient
+from voice import text_to_speech
 load_dotenv()
 
 # State definition
@@ -82,6 +83,7 @@ def llm_call(state: GrokJRAgent):
 
 def print_state(state: GrokJRAgent):
     print(state["messages"][-1].content)
+    text_to_speech(state["messages"][-1].content)
     return state
 
 def main():
