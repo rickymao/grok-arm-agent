@@ -1,3 +1,4 @@
+import json
 from roarm_sdk.roarm import roarm
 from utils import call_serial
 
@@ -17,5 +18,13 @@ def custom_post_ctrl(pose: list):
         pose: The target pose to control the robot to.
     """
     roarm_client = RoarmClient()
-    roarm_client.pose_ctrl(pose)
+
+    cmd = { "T":104,
+           "x":pose[0],
+           "y":pose[1],
+           "z":pose[2],
+           "t":pose[3],
+           "spd":0.25}
+
+    call_serial(json.dumps(cmd))
 

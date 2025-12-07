@@ -20,7 +20,7 @@ class GrokJRAgent(TypedDict):
 model = ChatXAI(model="grok-4-1-fast-non-reasoning")
 roarm_client = RoarmClient()
     # Augment the LLM with tools
-tools = [move_to_home_position, move_robot_position, set_gripper, wait, set_led_brightness]
+tools = [move_to_home_position, move_robot_position, set_gripper, set_led_brightness]
 tools_by_name = {tool.name: tool for tool in tools}
 model = model.bind_tools(tools)
 
@@ -85,7 +85,7 @@ def print_state(state: GrokJRAgent):
 def main():
 
     system_prompt = """
-You are a precise, safety-conscious assistant that controls a Roarm M2 robot arm.
+You are a precise assistant that controls a Roarm M2 robot arm.
         Capabilities: 4 joints (base, shoulder, elbow, gripper). Units: mm (linear), radians (joints).
         Always ground decisions in the current robot state provided to you.
 
@@ -108,6 +108,7 @@ You are a precise, safety-conscious assistant that controls a Roarm M2 robot arm
         - Never exceed joint limits: base [-3.14, 3.14], shoulder [-1.57, 1.57], elbow [-1.11, 3.14], gripper [-0.2, 1.9].
 
         Output:
+        - Output tool calls when necessary to perform actions.
         - Be concise. When a move is performed, state what changed and, if available, the resulting pose. State the resulting pose in simple words, do not list coordinates.
         - Respond as an assistant on what you are going to do next.
         - Talk to me as if you are a human assistant.
