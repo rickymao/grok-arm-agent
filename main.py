@@ -5,7 +5,7 @@ from typing import Annotated, TypedDict
 from langchain_core.messages import AnyMessage
 import operator
 from langgraph.graph import StateGraph, START, END
-from langchain.messages import HumanMessage, ToolMessage
+from langchain.messages import AIMessage, HumanMessage, ToolMessage
 from langchain.messages import SystemMessage
 from tools import move_to_home_position, move_robot_position, pick_up_object, set_gripper, set_led_brightness
 from roarm import RoarmClient
@@ -63,7 +63,9 @@ def tool_node(state: GrokJRAgent):
     for tool_call in state["messages"][-1].tool_calls:
         print(f"Invoking tool: {tool_call.get('name')} with args: {tool_call.get('args')}")
         tool = tools_by_name[tool_call["name"]]
-        tool.invoke(tool_call["args"])
+        content = tool.invoke(tool_call["args"])
+        result.append(content)
+        result.append(AIMessage(content="\n".join(result)))
     return {"messages": result }
 
 
