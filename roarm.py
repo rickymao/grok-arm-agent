@@ -18,3 +18,4 @@ def custom_post_ctrl(pose: list):
     """
     roarm_client = RoarmClient()
     roarm_client.pose_ctrl(pose)
+
