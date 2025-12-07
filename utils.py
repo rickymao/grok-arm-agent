@@ -1,32 +1,34 @@
 import serial
-import argparse
-import threading
+import time
 
-def read_serial():
-    while True:
-        data = ser.readline().decode('utf-8')
-        if data:
-            print(f"Received: {data}", end='')
+PORT = '/dev/ttyUSB0'  # Change this to your port (e.g., 'COM3' for Windows)
+BAUDRATE = 115200
+
+def read_serial(ser, duration=2):
+    """Read from serial for a specified duration"""
+    start_time = time.time()
+    while time.time() - start_time < duration:
+        if ser.in_waiting > 0:
+            data = ser.readline().decode('utf-8', errors='ignore')
+            if data:
+                print(f"Received: {data}", end='')
+        time.sleep(0.01)  # Small delay to prevent CPU spinning
 
 def call_serial(command: str):
-    global ser
-    parser = argparse.ArgumentParser(description='Serial JSON Communication')
-    parser.add_argument('port', type=str, help='Serial port name (e.g., COM1 or /dev/ttyUSB0)')
-
-    args = parser.parse_args()
-
-    ser = serial.Serial(args.port, baudrate=115200, dsrdtr=None)
+    ser = serial.Serial(PORT, baudrate=BAUDRATE, dsrdtr=None)
     ser.setRTS(False)
     ser.setDTR(False)
-
-    serial_recv_thread = threading.Thread(target=read_serial)
-    serial_recv_thread.daemon = True
-    serial_recv_thread.start()
-
+    
     try:
-        while True:
-            ser.write(command.encode() + b'\n')
+        # Send the command once
+        ser.write(command.encode() + b'\n')
+        print(f"Sent: {command}")
+        
+        # Wait for and read response
+        read_serial(ser, duration=2)  # Wait up to 2 seconds for response
+        
     except KeyboardInterrupt:
-        pass
+        print("\nInterrupted by user")
     finally:
         ser.close()
+        print("Serial port closed")
