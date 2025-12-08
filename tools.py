@@ -28,26 +28,39 @@ def check_pose(pose_target: list) -> bool:
                 return False
 
 @tool
-def move_to_home_position():
-    """Move to the home position"""
+def reset():
+    """Move the robot to the reset position or go home.
+    Returns:
+        A string indicating that the robot has moved to the reset position."""
     home_radians = [0.0, 0.0, 1.5708, 0.0]
     roarm_client.joints_radian_ctrl(radians=home_radians, speed=500, acc=0)
-    return "Moved to home position."
-
+    return "Moved to reset position."
 
 @tool
-def pick_up_object(object_name: str):
-    """Detect and locate an object by name using the camera feed and homography.
-    Args:
-        object_name: The name of the object to pick up
+def check_camera_for_objects() -> str:
+    """Check the camera for objects and return a summary of detected objects.
     Returns:
-        A string indicating that the object has been picked up
+        A string summarizing the detected objects."""
+    detections_map = get_detections_map()
+    if not detections_map:
+        return "No objects detected."
+    else:
+        detected_objects = ', '.join(detections_map.keys())
+        return f"Detected objects: {detected_objects}."
+
+@tool
+def pickup_object(object_name: str):
+    """Detect and pick up an object by name using the camera feed and homography.
+    Args:
+        object_name: The name of the object to pick up.
+    Returns:
+        A string indicating that the object has been picked up.
     """
     detections_map = get_detections_map()
     if not detections_map:
         return "No objects detected."
     if object_name not in detections_map:
-        return f"Object {object_name} not found in detections map."
+        return f"Object {object_name} not found in detections map. Instead found: {list(detections_map.keys())}"
     
     # Pixel center in rotated+cropped frame
     cx, cy = detections_map[object_name]
